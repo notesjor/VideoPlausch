@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
+using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using PlauschiServer.Model;
 using Tfres;
 
@@ -12,12 +15,12 @@ namespace PlauschiServer
     private static object _lock = new object();
     private static Dictionary<string, Event> _events = new Dictionary<string, Event>();
 
-    private const int _maxUsersPerGroup = 15;
-    private const int _maxEvents = 1000;
+    private static uint _maxUsersPerGroup;
+    private static uint _maxEvents;
 
     static void Main(string[] args)
     {
-      var server = new Server("*", 8123, ctx => ctx.Response.Send(HttpStatusCode.InternalServerError));
+      var server = Load();
       server.AddEndpoint(HttpVerb.GET, "/new", NewGroupMember);
       server.AddEndpoint(HttpVerb.GET, "/check", CheckGroup);
     }
@@ -76,6 +79,25 @@ namespace PlauschiServer
       {
         return ctx.Response.Send(HttpStatusCode.InternalServerError);
       }
+    }
+
+    private static Server Load()
+    {
+      var config = File.Exists("server.cnf")
+                     ? JsonConvert.DeserializeObject<ServerConfiguration>(File.ReadAllText("server.cnf", Encoding.UTF8))
+                     : NewServerConfiguration();
+
+      _maxEvents = config.MaxEvents;
+      _maxUsersPerGroup = config.MaxUsersPerGroup;
+
+      return new Server(config.HostnameOrIp, config.Port, ctx => ctx.Response.Send(HttpStatusCode.InternalServerError));
+    }
+
+    private static ServerConfiguration NewServerConfiguration()
+    {
+      var res = new ServerConfiguration();
+      File.WriteAllText("server.cnf", JsonConvert.SerializeObject(res), Encoding.UTF8);
+      return res;
     }
   }
 }
