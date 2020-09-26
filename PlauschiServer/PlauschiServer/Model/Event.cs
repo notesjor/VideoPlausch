@@ -8,7 +8,7 @@ namespace PlauschiServer.Model
 {
   public class Event
   {
-    public Event(int max)
+    public Event(uint max)
     {
       Guid = Guid.NewGuid();
       Max = max;
@@ -16,7 +16,7 @@ namespace PlauschiServer.Model
     }
 
     public Guid Guid { get; set; }
-    public int Max { get; set; }
-    public int Count { get; set; }
+    public uint Max { get; set; }
+    public uint Count { get; set; }
   }
 }

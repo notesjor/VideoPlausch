@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <!-- Hinweis: Dieser Demo-Client von Plauschi basiert auf RevealJS hierzu ist folgendes zu beachten: -->
+    <!-- 1. Ändern Sie bitte ZUERST die folgenden Angaben: -->
+    <script>
+      var eventID = "plauschi"; // Name ihres Events. z. B. "Uni Siegen - Erstsemestertreff"
+      var groupSize = 5; // Wie groß soll eine Gruppe sein? - Sind alle Plätze belegt, startet das Meeting automatisch. Achtung: WebRTC basierte Video-Konferenz-Systeme wie Jitsi haben ein praktisches Limit von ca. 20 Personen.
+      var videoURL = "https://meet.jit.si/{groupID}"; // Basis URL z. B. für ihre Jitsi-Instanz (Plauschi funktioniert auch mit anderen Video-Konferenz-Systemen). {eventID} wird später dynamisch durch die groupID ersetzt.
+      var plauschiURL = "https://plauschi.corpusexplorer.de/api"; // Wenn Sie einen eigenen Plauschi-Server verwenden möchten, dann ändern Sie diese URL (optional)
+    </script>
+    <!-- 2. Im Quellcode sind TODO-Kommentare hinterlegt. An diesen Stellen können Sie etwas ändern. z. B. Hintergründe, Titel, Texte, etc. -->
+    <!-- 3. Sie können RevealJS nach Möglichkeit auf ihrem Server selbst hosten. Die hier angebotene Lösung mittels CDN (cloudflare) wurde nur gewählt, um es Ihnen möglichst einfach zu machen. -->
+    <!-- 4. Sie können für den Plauschi-Client auch eine andere GUI bauen. Dies erfordert aber entsprechende JavaScript-Skills. Die notwendigen Snippets wurden im Quellcode mit SNIPPET markiert und kommentiert. -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/3.6.0/css/reveal.min.css"
+    />
+    <!-- TODO: ggf. Theme ändern (falls gewünscht) -->
+    <!-- Bsp.: href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/3.6.0/css/theme/black.min.css" -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/3.6.0/css/theme/white.min.css"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/3.6.0/js/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- TODO: ggf. Titel ändern (falls gewünscht) <title>Mein Wunschtitel</title> -->
+    <title>Plauschi-Client</title>
+    <meta
+      name="description"
+      content="Plauschi (https://notes.jan-oliver-ruediger.de/software/plauschi-client-server/)"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <!-- TODO: ggf. um den Hintergrund zu ändern (falls gewünscht). Ändern Sie die URL für data-background-image-->
+        <!--- Bsp.: data-background-image="https://meineuni.de/meinhintergrund.jpg" -->
+        <!-- Wie oben (zu RevealJS): Bitte Bild nach Möglichkeit selbst auf eigenen Server hosten. Bild wird nur zur vereinfachten Handhabung bereitgestellt. -->
+        <!-- Copyright Hinwies: Das Bild stammt von: https://pixabay.com/de/photos/menschen-m%C3%A4dchen-frauen-studenten-2557396/ und ist gemeinfrei (Pixabay Lizenz - Freie kommerzielle Nutzung)-->
+        <section
+          data-background-image="https://notes.jan-oliver-ruediger.de/wp-content/uploads/people-2557396.jpg"
+        >
+          <div style="background-color: rgba(255, 255, 255, 0.75)">
+            <!-- TODO: ggf. Willkommens-Text ändern (falls gewünscht). -->
+            <h2>Herzlich willkommen</h2>
+            <p style="font-size: 24px; padding: 10px">
+              Wenn dein Webbrowser dich fragt: Bitte lasse den Zugriff auf
+              Kamera/Webcam und dein Mikrofon zu. Du wirst automatisch mit der
+              nächsten Gesprächsrunde verbunden, sobald die Runde vollständig
+              gefüllt ist. Falls dir das zu lange dauert, kannst Du (unten
+              rechts auf der Seite) auf den blinkenden Pfeil klicken und dich
+              direkt mit der Gesprächsrunde verbinden.
+            </p>
+            <div id="counter">
+              <h3 id="counterValue">? / ?</h3>
+              <p id="counterLabel">Verbindung wird aufgebaut...</p>
+            </div>
+            <div id="error"></div>
+          </div>
+        </section>
+        <!-- Die. -->
+        <section class="stretch">
+          <iframe
+            src="https://meet.jit.si/plauschi"
+            id="plauschiFrame"
+            height="100%"
+            width="100%"
+            title=""
+            style="
+              position: fixed;
+              top: 0;
+              left: 0;
+              bottom: 0;
+              right: 0;
+              width: 100%;
+              height: 100%;
+              border: none;
+              margin: 0;
+              padding: 0;
+              overflow: hidden;
+              z-index: 999999;
+            "
+          ></iframe>
+        </section>
+      </div>
+    </div>
+    <script>
+      Reveal.initialize();
+
+      // SNIPPET START (dies ist der Plauschi-Web-Client)
+      var cnt = 0;
+      var max = 0;
+      var groupID = "";
+      var interval = null;
+
+      // Schritt 0: Fallback URL
+      $("#plauschiFrame").attr("src", videoURL.replace("{groupID}", eventID));
+
+      // Schritt 1: Frage (direkt nachdem die Seite geladen wurde) den Plauschi-Server nach eine groupID
+      $(document).ready(function () {
+        var json = new XMLHttpRequest();
+        json.overrideMimeType("application/json");
+        // Bsp.: https://meineuni.de/new?event=myEvent&size=5
+        json.open(
+          "GET",
+          plauschiURL +
+            "/new?event=" +
+            encodeURIComponent(eventID) +
+            "&size=" +
+            groupSize,
+          true
+        );
+        json.onreadystatechange = function () {
+          if (json.readyState === 4)
+            if (json.status == "200") {
+              var data = JSON.parse(json.responseText);
+
+              // speicher die Daten gloabal ab.
+              max = data.Max;
+              cnt = data.Count;
+              groupID = data.Guid;
+              // Setze Counter
+              $("#counterValue").text(cnt + " / " + max);
+              $("#counterLabel").text("Teilnehmer*innen");
+
+              // setze die URL für die zweite Seite (iframe)
+              $("#plauschiFrame").attr(
+                "src",
+                videoURL.replace("{groupID}", groupID)
+              );
+
+              // Aktiviere die periodische Überprüfung (ist Gruppe vollständig?)
+              interval = setInterval(periodicCheck, 5000);
+            } else {
+              displayErrorMsg(
+                "Es konnte keine Verbindung zum Server hergestellt werden."
+              );
+            }
+        };
+        json.send(null);
+      });
+
+      // Überprüfe periodisch, ob die Gruppe voll ist.
+      function periodicCheck() {
+        var json = new XMLHttpRequest();
+        json.overrideMimeType("application/json");
+        // Bsp.: https://meineuni.de/check?event=myEvent&group=bd926924-d944-2312-1985-93eb6731ac90
+        json.open(
+          "GET",
+          plauschiURL +
+            "/check?event=" +
+            encodeURIComponent(eventID) +
+            "&group=" +
+            groupID,
+          true
+        );
+        json.onreadystatechange = function () {
+          if (json.readyState === 4)
+            if (json.status == "200") {
+              var data = JSON.parse(json.responseText);
+              console.log(data);
+
+              // Speichere Daten gloabl und aktualisiere Counter
+              max = data.Max;
+              cnt = data.Count;
+              $("#counterValue").text(cnt + " / " + max);
+              $("#counterLabel").text("Teilnehmer*innen");
+
+              // Wenn Gruppe voll, dann gehe zum Meeting-Raum
+              if (cnt >= max) {
+                Reveal.slide(2);
+                clearInterval(interval);
+              }
+            } else {
+              // ignore
+            }
+        };
+        json.send(null);
+      }
+
+      // Für den Fall, dass ein Fehler auftritt: Counter verbergen. Fehler anzeigen. Periodischen Check abbrechen.
+      function displayErrorMsg(msg) {
+        $("#counter").hide();
+        $("#error").text(msg);
+        clearInterval(interval);
+      }
+
+      // SNIPPET ENDE
+    </script>
+  </body>
+</html>

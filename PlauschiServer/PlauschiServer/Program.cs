@@ -23,6 +23,8 @@ namespace PlauschiServer
       var server = Load();
       server.AddEndpoint(HttpVerb.GET, "/new", NewGroupMember);
       server.AddEndpoint(HttpVerb.GET, "/check", CheckGroup);
+      while (true)
+        Console.ReadLine();
     }
 
     private static Task CheckGroup(HttpContext ctx)
@@ -39,7 +41,11 @@ namespace PlauschiServer
             return ctx.Response.Send(HttpStatusCode.InternalServerError);
 
           var myEvent = _events[eventId];
-          return myEvent.Guid != groupId ? ctx.Response.Send(HttpStatusCode.Created) : ctx.Response.Send(myEvent);
+          return myEvent.Guid != groupId ? ctx.Response.Send(new Event(0)
+          {
+            Count = 0,
+            Guid = groupId
+          }) : ctx.Response.Send(myEvent);
         }
       }
       catch
@@ -54,7 +60,7 @@ namespace PlauschiServer
       {
         var get = ctx.Request.GetData();
         var eventId = get["event"];
-        var groupSize = int.Parse(get["size"]);
+        var groupSize = uint.Parse(get["size"]);
         if (groupSize > _maxUsersPerGroup)
           return ctx.Response.Send(HttpStatusCode.InternalServerError);
 
