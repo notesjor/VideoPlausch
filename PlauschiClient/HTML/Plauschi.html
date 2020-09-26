@@ -63,30 +63,10 @@
             <div id="error"></div>
           </div>
         </section>
-        <!-- Die. -->
-        <section class="stretch">
-          <iframe
-            src="https://meet.jit.si/plauschi"
-            id="plauschiFrame"
-            height="100%"
-            width="100%"
-            title=""
-            style="
-              position: fixed;
-              top: 0;
-              left: 0;
-              bottom: 0;
-              right: 0;
-              width: 100%;
-              height: 100%;
-              border: none;
-              margin: 0;
-              padding: 0;
-              overflow: hidden;
-              z-index: 999999;
-            "
-          ></iframe>
-        </section>
+        <section
+          data-background-iframe="https://meet.jit.si/plauschi"
+          id="plauschiFrame"
+        ></section>
       </div>
     </div>
     <script>
@@ -99,7 +79,11 @@
       var interval = null;
 
       // Schritt 0: Fallback URL
-      $("#plauschiFrame").attr("src", videoURL.replace("{groupID}", eventID));
+      $("#plauschiFrame").attr(
+        "data-background-iframe",
+        videoURL.replace("{groupID}", eventID)
+      );
+      Reveal.sync();
 
       // Schritt 1: Frage (direkt nachdem die Seite geladen wurde) den Plauschi-Server nach eine groupID
       $(document).ready(function () {
@@ -130,9 +114,10 @@
 
               // setze die URL für die zweite Seite (iframe)
               $("#plauschiFrame").attr(
-                "src",
+                "data-background-iframe",
                 videoURL.replace("{groupID}", groupID)
               );
+              Reveal.sync();
 
               // Aktiviere die periodische Überprüfung (ist Gruppe vollständig?)
               interval = setInterval(periodicCheck, 5000);
